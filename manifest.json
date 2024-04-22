@@ -1,0 +1,14 @@
+{
+  "domain": "bakalari_calendar_integration",
+  "name": "Bakaláři Calendar",
+  "config_flow": true,
+  "documentation": "None",
+  "requirements": [],
+  "ssdp": [],
+  "zeroconf": [],
+  "homekit": {},
+  "dependencies": [],
+  "codeowners": [],
+  "iot_class": "cloud_polling",
+  "version": "1.0.1"
+}
