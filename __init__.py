@@ -4,9 +4,8 @@ import logging
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 
-from bakalari.bakalari_api import BakalariAPI
-from bakalari.calendar import BakalariCalendar
-from bakalari.coordinator import BakalariDataCoordinator
+from .bakalari_api import BakalariAPI
+from .coordinator import BakalariDataCoordinator
 
 from .const import DOMAIN
 
@@ -18,12 +17,19 @@ async def async_setup(hass: HomeAssistant, config: dict):
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     """Set up warmup4ie from a config entry."""
     # Store an instance of the API object for your platforms to access
-    hass.data[DOMAIN][entry.entry_id] = BakalariAPI(hass, entry.data)
-    coor = BakalariDataCoordinator(hass, hass.data[DOMAIN][entry.entry_id])
+    hass.data.setdefault(DOMAIN, {})
+    # hass.data[DOMAIN][entry.entry_id] = dict(entry.data)
 
-    await coor.async_config_entry_first_refresh()
+    hass.data[DOMAIN][entry.entry_id] = {
+        'url': entry.data['url'],
+        'username': entry.data['username'],
+        'password': entry.data['password']
+    }
 
-    # async_add_entities([BakalariCalendar(coordinator)])
+    hass.data[DOMAIN][entry.entry_id]['api'] = BakalariAPI(hass, entry.data)
+    hass.data[DOMAIN][entry.entry_id]['coordinator'] = BakalariDataCoordinator(hass, hass.data[DOMAIN][entry.entry_id]['api'])
+
+    await hass.data[DOMAIN][entry.entry_id]['coordinator'].async_config_entry_first_refresh()
 
     return True
 

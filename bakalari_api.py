@@ -27,13 +27,11 @@ class BakalariAPI:
         body = f"client_id={client_id}&grant_type=refresh_token&refresh_token={self._refresh_token}"
         headers = {'Content-Type': content_type}
 
-        session = async_get_clientsession(self.hass)
-        async with session.post(post_url, headers=headers, data=body) as response:
-            await session.close()
-
-            if response.status != 200:
-                _LOGGER.error(f"Failed to refresh token: {response.status} {await response.text()}")
-                await self._re_login()
+        async with async_get_clientsession(self.hass) as session:
+            async with session.post(post_url, headers=headers, data=body) as response:
+                if response.status != 200:
+                    _LOGGER.error(f"Failed to refresh token: {response.status} {await response.text()}")
+                    await self._re_login()
 
             response = await response.json()
             self._access_token = response.get('access_token')
@@ -51,37 +49,33 @@ class BakalariAPI:
         body = f"client_id={client_id}&grant_type=password&username={self._username}&password={self._password}"
         headers = {'Content-Type': content_type}
 
-        session = async_get_clientsession(self.hass)
-        async with session.post(post_url, headers=headers, data=body) as response:
-            await session.close()
+        async with async_get_clientsession(self.hass) as session:
+            async with session.post(post_url, headers=headers, data=body) as response:
+                if response.status != 200:
+                    _LOGGER.error(f"Failed to re-login: {response.status} {await response.text()}")
+                    raise ValueError("Failed to re-login")
 
-            if response.status != 200:
-                _LOGGER.error(f"Failed to re-login: {response.status} {await response.text()}")
-                raise ValueError("Failed to re-login")
+                response = await response.json()
+                self._access_token = response.get('access_token')
+                self._refresh_token = response.get('refresh_token')
+                self._expires_at = int(time.time()) + response.get('expires_in')
 
-            response = await response.json()
-            self._access_token = response.get('access_token')
-            self._refresh_token = response.get('refresh_token')
-            self._expires_at = int(time.time()) + response.get('expires_in')
-
-    async def _fetch_post(self, url, headers, post_name):
+    async def _fetch_get(self, url, headers, post_name):
         """Fetch a post request."""
-        session = async_get_clientsession(self.hass)
-        async with session.post(url, headers=headers) as response:
-            await session.close()
+        async with async_get_clientsession(self.hass) as session:
+            async with session.get(url, headers=headers) as response:
+                if response.status == 401:
+                    await self._refresh_token()
+                    return await self._fetch_get(url, headers, post_name)
 
-            if response.status == 401:
-                await self._refresh_token()
-                return await self._fetch_post(url, headers, post_name)
+                if response.status != 200:
+                    msg = f"Failed to fetch get ({post_name}): {response.status} {await response.text()}"
 
-            if response.status != 200:
-                msg = f"Failed to fetch post ({post_name}): {response.status} {await response.text()}"
+                    _LOGGER.error(msg)
 
-                _LOGGER.error(msg)
+                    raise ValueError(msg)
 
-                raise ValueError(msg)
-
-            return await response.json()
+                return await response.json()
 
     async def get_permanent_time_table(self):
         """Get the permanent time table."""
@@ -91,7 +85,7 @@ class BakalariAPI:
             'Content-Type': 'application/x-www-form-urlencoded'
         }
 
-        return await self._fetch_post(url, headers, "permanent time table")
+        return await self._fetch_get(url, headers, "permanent time table")
 
     async def get_timetable(self, date: datetime.datetime):
         """Get the timetable for a specific date."""
@@ -101,4 +95,4 @@ class BakalariAPI:
             'Content-Type': 'application/x-www-form-urlencoded'
         }
 
-        return await self._fetch_post(url, headers, "timetable")
+        return await self._fetch_get(url, headers, "timetable")

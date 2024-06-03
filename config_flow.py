@@ -28,15 +28,13 @@ async def validate_auth(url: str, username: str, password: str, hass: core.HomeA
     body = f"client_id={client_id}&grant_type=password&username={username}&password={password}"
     headers = {'Content-Type': content_type}
 
-    session = async_get_clientsession(hass)
-    async with session.post(post_url, headers=headers, data=body) as response:
-        await session.close()
-
-        if response.status != 200:
-            _resp = await response.json()
-            _error = _resp.get('error_description', 'Authentication failed (no error description)')
-            raise ValueError(_error)
-        return await response.json()
+    async with async_get_clientsession(hass) as session:
+        async with session.post(post_url, headers=headers, data=body) as response:
+            if response.status != 200:
+                _resp = await response.json()
+                _error = _resp.get('error_description', 'Authentication failed (no error description)')
+                raise ValueError(_error)
+            return await response.json()
 
 class BakalariTestConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """BakalariTest config flow."""
@@ -47,8 +45,8 @@ class BakalariTestConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         """Invoked when a user initiates a flow via the user interface."""
         errors = {}
         if user_input is not None:
-            await self.async_set_unique_id(user_input[CONF_USERNAME])
-            self._abort_if_unique_id_configured()
+            # await self.async_set_unique_id(user_input[CONF_USERNAME])
+            # self._abort_if_unique_id_configured()
 
             try:
                 response = await validate_auth(user_input[CONF_URL], user_input[CONF_USERNAME], user_input[CONF_PASSWORD], self.hass)

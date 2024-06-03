@@ -5,8 +5,7 @@ import async_timeout
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
-from bakalari.bakalari_api import BakalariAPI
-
+from .bakalari_api import BakalariAPI
 from .const import DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
